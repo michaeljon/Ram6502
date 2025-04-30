@@ -1,8 +1,7 @@
 #include <Arduino.h>
 
 #include "Cpu6502.h"
-#include "SRAM_23LC512.h"
 
-void setInitVector(uint8_t csPin, uint16_t addr) {
-  writeSPIWord(csPin, 0xfffc, addr);
+void setInitVector(SRAM_23LC512 memory, uint16_t addr) {
+  memory.writeSPIWord(0, 0xfffc, addr);
 }

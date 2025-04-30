@@ -21,6 +21,9 @@
 #define TEST_SRAM1_MEM
 #define TEST_SRAM2_MEM
 
+SRAM_23LC512 lowMemory(SRAM1_CS);
+SRAM_23LC512 highMemory(SRAM2_CS);
+
 bool tick = false;
 void onClock() { tick = true; }
 
@@ -29,27 +32,23 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 #else
   Serial.begin(115200);
+  while (!Serial)
+    ;
 #endif
-
-  digitalWrite(SRAM1_CS, HIGH);
-  pinMode(SRAM1_CS, OUTPUT);
-
-  digitalWrite(SRAM2_CS, HIGH);
-  pinMode(SRAM2_CS, OUTPUT);
 
   SPI.begin();
 
 #if defined(SERIAL_DIAGNOSTICS)
   Serial.println("Initializing RAM");
 #endif
-  initRAM(SRAM1_CS);
-  initRAM(SRAM2_CS);
+  lowMemory.init();
+  highMemory.init();
 
 #if defined(TEST_SRAM1_MEM)
   Serial.println("Testing SRAM1");
-  fillMemory(SRAM1_CS, 0x12);
+  lowMemory.fillMemory(0x12);
   Serial.println("Verifying SRAM1");
-  if (verifyMemory(SRAM1_CS, 0x12) == true) {
+  if (lowMemory.verifyMemory(0x12) == true) {
     Serial.println("SRAM1 OK");
   } else {
     Serial.println("Failed to verify SRAM1");
@@ -60,9 +59,9 @@ void setup() {
 
 #if defined(TEST_SRAM2_MEM)
   Serial.println("Testing SRAM2");
-  fillMemory(SRAM2_CS, 0x34);
+  highMemory.fillMemory(0x34);
   Serial.println("Verifying SRAM2");
-  if (verifyMemory(SRAM2_CS, 0x34) == true) {
+  if (highMemory.verifyMemory(0x34) == true) {
     Serial.println("SRAM2 OK");
   } else {
     Serial.println("Failed to verify SRAM2");
@@ -74,21 +73,21 @@ void setup() {
 #if defined(SERIAL_DIAGNOSTICS)
   Serial.println("Setting RAM to 0xEA");
 #endif
-  fillMemory(SRAM1_CS, 0xEA);
-  fillMemory(SRAM2_CS, 0xEA);
+  lowMemory.fillMemory(0xEA);
+  highMemory.fillMemory(0xEA);
 
 #if defined(SERIAL_DIAGNOSTICS)
   Serial.println("Setting init vector");
 #endif
-  setInitVector(SRAM1_CS, 0x0300);
+  setInitVector(lowMemory, 0x0300);
 
 #if defined(SERIAL_DIAGNOSTICS)
   Serial.println("Loading program");
 #endif
-  writeBlock(SRAM1_CS, 0x0300, asm_pgm, asm_pgm_len);
+  lowMemory.writeBlock(0x0300, asm_pgm, asm_pgm_len);
 
   Serial.println("Verifying program");
-  if (verifyBlock(SRAM1_CS, 0x0300, asm_pgm, asm_pgm_len) == true) {
+  if (lowMemory.verifyBlock(0x0300, asm_pgm, asm_pgm_len) == true) {
     Serial.println("Program OK");
   } else {
     Serial.println("Failed to load program");
@@ -114,7 +113,7 @@ void loop() {
 
     if (readWritePin) {
       // RWB=1=read get data from RAM
-      data = readSPIByte(SRAM1_CS, address);
+      data = lowMemory.readSPIByte(address);
       // RWB=1=read (CPU is reading so we are writing to pins)
       PORTL = data;
       DDRL = 0xFF;
@@ -123,7 +122,7 @@ void loop() {
       DDRL = 0x00;
       data = PINL;
       // RWB=0=write write data to RAM
-      writeSPIByte(SRAM1_CS, address, data);
+      lowMemory.writeSPIByte(address, data);
     }
 
 #if defined(SERIAL_DIAGNOSTICS)
