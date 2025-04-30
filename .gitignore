@@ -6,6 +6,6 @@
 
 asm/pgm_Output.txt
 asm/pgm
-asm/_FileInformations.txt
+asm/_FileInformation.txt
 
 include/pgm.h
